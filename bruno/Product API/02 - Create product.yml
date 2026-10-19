@@ -1,0 +1,36 @@
+info:
+  name: Create product
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/products"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Bruno Demo Laptop",
+        "price": 1299.99,
+        "category": "electronics"
+      }
+  auth: none
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        bru.setEnvVar("productId", res.body.id.toString());
+    - type: tests
+      code: |-
+        test("creates a product", function () {
+          expect(res.getStatus()).to.equal(201);
+          expect(res.getBody()).to.have.property("id");
+          expect(res.getBody().name).to.equal("Bruno Demo Laptop");
+        });
+
+settings:
+  encodeUrl: true

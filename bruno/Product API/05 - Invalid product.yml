@@ -1,0 +1,32 @@
+info:
+  name: Invalid product validation
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/products"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "x",
+        "price": 0,
+        "category": "invalid"
+      }
+  auth: none
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("rejects invalid product data", function () {
+          expect(res.getStatus()).to.equal(400);
+          expect(res.getBody().success).to.equal(false);
+        });
+
+settings:
+  encodeUrl: true

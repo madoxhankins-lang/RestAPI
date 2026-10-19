@@ -1,11 +1,19 @@
 import express from 'express';
 import { productSchema, productUpdateSchema } from '../validation/product.schema';
-import { errorHandler, ValidationError,NotFoundError } from '../utils/errorHandler';
+import { NotFoundError, ValidationError } from '../utils/errorHandler';
 import { Product } from '../models/product.model';
 
 const router = express.Router();
 let products: Product[] = [];
 let idCounter = 1;
+
+const parseProductId = (value: string): number => {
+  const productId = Number(value);
+  if (!Number.isSafeInteger(productId) || productId < 1) {
+    throw new ValidationError('Product ID must be a positive integer');
+  }
+  return productId;
+};
 
 /**
  * @openapi
@@ -38,6 +46,54 @@ router.get('/', (req, res) => {
 
 /**
  * @openapi
+ * /api/v1/products/{id}:
+ *   get:
+ *     summary: Get a product by ID
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       400:
+ *         description: Invalid product ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Product not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/:id', (req, res, next) => {
+  try {
+    const productId = parseProductId(req.params.id);
+    const product = products.find((item) => item.id === productId);
+
+    if (!product) {
+      return next(new NotFoundError('Product not found'));
+    }
+
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @openapi
  * /api/v1/products:
  *   post:
  *     summary: Create a new product
@@ -56,7 +112,7 @@ router.get('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Product'
  *       400:
- *         description: Validation error
+ *         description: Invalid product ID or validation error
  *         content:
  *           application/json:
  *             schema:
@@ -123,27 +179,29 @@ router.post('/', (req, res, next) => {
 
 // PUT /products/:id
 router.put('/:id', (req, res, next) => {
-  const parseResult = productUpdateSchema.safeParse(req.body);
-  
-  if (!parseResult.success) {
-    return next(new ValidationError('Invalid product data'));
+  try {
+    const productId = parseProductId(req.params.id);
+    const parseResult = productUpdateSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      return next(new ValidationError('Invalid product data'));
+    }
+
+    const productIndex = products.findIndex((product) => product.id === productId);
+    if (productIndex === -1) {
+      return next(new NotFoundError('Product not found'));
+    }
+
+    const updatedProduct = {
+      ...products[productIndex],
+      ...parseResult.data
+    };
+
+    products[productIndex] = updatedProduct;
+    res.json(updatedProduct);
+  } catch (error) {
+    next(error);
   }
-
-  const productId = parseInt(req.params.id);
-  const productIndex = products.findIndex(p => p.id === productId);
-
-  if (productIndex === -1) {
-    return next(new NotFoundError('Product not found'));
-  }
-
-  const updatedProduct = {
-    ...products[productIndex],
-    ...parseResult.data,
-    id: productId // Prevent ID modification
-  };
-
-  products[productIndex] = updatedProduct;
-  res.json(updatedProduct);
 });
 
 /**
@@ -162,6 +220,12 @@ router.put('/:id', (req, res, next) => {
  *     responses:
  *       204:
  *         description: Product deleted
+ *       400:
+ *         description: Invalid product ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Product not found
  *         content:
@@ -173,8 +237,13 @@ router.put('/:id', (req, res, next) => {
 
 // DELETE /products/:id
 router.delete('/:id', (req, res, next) => {
-  const productId = parseInt(req.params.id);
-  const productIndex = products.findIndex(p => p.id === productId);
+  let productId: number;
+  try {
+    productId = parseProductId(req.params.id);
+  } catch (error) {
+    return next(error);
+  }
+  const productIndex = products.findIndex((product) => product.id === productId);
 
   if (productIndex === -1) {
     return next(new NotFoundError('Product not found'));
@@ -231,6 +300,10 @@ router.delete('/:id', (req, res, next) => {
  *           example: electronics
  *     ProductUpdate:
  *       type: object
+ *       anyOf:
+ *         - required: [name]
+ *         - required: [price]
+ *         - required: [category]
  *       properties:
  *         name:
  *           type: string
@@ -256,6 +329,4 @@ router.delete('/:id', (req, res, next) => {
  *           example: "Invalid product data"
  */
 
-// Error handling middleware
-router.use(errorHandler);
 export default router;

@@ -6,13 +6,14 @@
       "version": "20"
     }
   },
-    "postCreateCommand": "npm install",
-  "forwardPorts": [3000],
+    "postCreateCommand": "cd code/start && npm install",
+  "forwardPorts": [3001],
   "customizations": {
     "vscode": {
       "extensions": [
         "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "bruno-api-client.bruno"
       ]
     }
   }

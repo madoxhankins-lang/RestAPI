@@ -1,0 +1,22 @@
+info:
+  name: List after delete
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v1/products"
+  auth: none
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("does not include the deleted product", function () {
+          const deletedId = Number(bru.getEnvVar("productId"));
+          expect(res.getStatus()).to.equal(200);
+          expect(res.getBody().some((product) => product.id === deletedId)).to.equal(false);
+        });
+
+settings:
+  encodeUrl: true

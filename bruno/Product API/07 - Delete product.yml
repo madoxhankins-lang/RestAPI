@@ -1,0 +1,20 @@
+info:
+  name: Delete product
+  type: http
+  seq: 7
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/v1/products/{{productId}}"
+  auth: none
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("deletes the product", function () {
+          expect(res.getStatus()).to.equal(204);
+        });
+
+settings:
+  encodeUrl: true
